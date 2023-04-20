@@ -1,13 +1,25 @@
 #include <fstream>
 #include <iostream>
+
 #include "Game.h"
 #include "Common.h"
 
 Game::Game(std::string const& window_name)
     : m_window(sf::VideoMode(3020, 1460/*1280,720*/), window_name.c_str()), m_tile_shape(sf::Vector2f(20,20)), ip(sf::IpAddress::getLocalAddress()),
-      chat("Resources/Fonts/LiberationMono-Regular.ttf", 25)
+      chat("Resources/Fonts/LiberationMono-Regular.ttf", 25), m_fog(candle::LightingArea::FOG,
+                                                                    sf::Vector2f(0.f, 0.f),
+                                                                    sf::Vector2f(3020.f, 1460.f))
 {
+    m_flashlight.setRange(50);
+    m_flashlight.setFade(false);
 
+    m_other.setRange(150);
+    //m_other.setIntensity(0.4);
+    m_other.setColor(sf::Color::Red);
+    //m_flashlight.setIntensity(0.8);
+    sf::Color c = sf::Color::Black;
+    c.a = 190;
+    m_fog.setAreaColor(c);
     font.loadFromFile("Resources/Fonts/LiberationMono-Regular.ttf");
 
     //Limit our window to 60FPS
@@ -33,14 +45,21 @@ Game::Game(std::string const& window_name)
     std::ifstream map_file("Resources/Maps/map.txt");
     std::string input;
 
-    if(!m_wall_tile.loadFromFile("Tiles_pack/Tileset_10.png", sf::IntRect(0,32,16,16))) std::cout << "Error!" << std::endl;
-    if(!m_empty_tile.loadFromFile("Tiles_pack/Tileset_10.png", sf::IntRect(10*16,4*16,16,16))) std::cout << "Error!" << std::endl;
+    if(!m_wall_tile.loadFromFile("Tiles_pack/Tileset_14.png", sf::IntRect(0,32,16,16))) std::cout << "Error!" << std::endl;
+    if(!m_empty_tile.loadFromFile("Tiles_pack/Tileset_14.png", sf::IntRect(10*16,4*16,16,16))) std::cout << "Error!" << std::endl;
 
     while(map_file >> input) m_tilemap.push_back(input);
 
     for(int i = 0; i < m_tilemap.size(); ++i)
         for(int j = 0; j < m_tilemap[0].size(); ++j)
-            if(m_tilemap[i][j] == '#') m_walls.emplace_back(sf::FloatRect(j*20, i*20, 20, 20));
+            if(m_tilemap[i][j] == '#')
+            {
+                m_walls.emplace_back(sf::FloatRect(j*20, i*20, 20, 20));
+                m_map_edges.emplace_back(sf::Vector2f(j*20.f, i*20.f), sf::Vector2f(j*20.f + 20.f, i*20.f));
+                m_map_edges.emplace_back(sf::Vector2f(j*20.f + 20.f, i*20.f), sf::Vector2f(j*20.f + 20.f, i*20.f + 20.f));
+                m_map_edges.emplace_back(sf::Vector2f(j*20.f + 20.f, i*20.f + 20.f), sf::Vector2f(j*20.f, i*20.f + 20.f));
+                m_map_edges.emplace_back(sf::Vector2f(j*20.f, i*20.f + 20.f), sf::Vector2f(j*20.f, i*20.f));
+            }
 
 }
 
@@ -54,6 +73,9 @@ sf::Text text("hello", font);
 text.setCharacterSize(50);
 text.setFillColor(sf::Color::Red);
 
+m_other.setPosition(sf::Vector2f(100.f, 60.f));
+m_other.castLight(m_map_edges.begin(), m_map_edges.end());
+
     while(m_window.isOpen())
     {
         process_events();
@@ -65,6 +87,16 @@ text.setFillColor(sf::Color::Red);
         draw_connected_players();
         //Hande user input
         m_player.draw(m_window);
+
+
+        m_flashlight.setPosition(m_player.get_entity().getPosition());
+        //m_flashlight.castLight(m_map_edges.begin(), m_map_edges.end());
+        m_fog.clear();
+        m_fog.draw(m_player.get_flashlight());
+        m_fog.display();
+        m_window.draw(m_fog);
+        m_window.draw(m_other);
+       // m_window.draw(m_flashlight);
 
         //text.setPosition();
 

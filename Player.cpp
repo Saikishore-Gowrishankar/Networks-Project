@@ -10,6 +10,9 @@ Player::Player(bool other)
 {
     m_render_view.setRadius(5);
 
+    m_flashlight.setRange(50);
+    m_flashlight.setFade(false);
+
     if(other)
         m_render_view.setFillColor(sf::Color::Red);
     else
@@ -43,4 +46,6 @@ void Player::draw(sf::RenderWindow& window)
     m_view.setCenter(sf::Vector2f(std::clamp(m_render_view.getPosition().x,100.f,1180.f), std::clamp(m_render_view.getPosition().y, 75.f, 1385.f)));
     if(!m_other) window.setView(m_view);
     window.draw(m_render_view);
+    m_flashlight.setPosition(m_render_view.getPosition());
+
 }

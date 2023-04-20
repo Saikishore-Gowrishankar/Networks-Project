@@ -8,6 +8,9 @@
 #include "Player.h"
 #include "ChatBox.h"
 
+#include "Candle/RadialLight.hpp"
+#include "Candle/LightingArea.hpp"
+
 class Game
 {
 public:
@@ -32,6 +35,9 @@ private:
     sf::RectangleShape m_tile_shape;
     sf::Texture m_wall_tile;
     sf::Texture m_empty_tile;
+    candle::RadialLight m_flashlight, m_other;
+    candle::EdgeVector m_map_edges;
+    candle::LightingArea m_fog;
 
     Player m_player;
     sf::Vector2f m_player_oldpos;

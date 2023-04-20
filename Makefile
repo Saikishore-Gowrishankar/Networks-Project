@@ -1,5 +1,5 @@
 game:
-	g++ ChatBox.cpp Game.cpp Player.cpp main.cpp -std=c++2a -lsfml-graphics -lsfml-network -lsfml-window -lsfml-system
+	g++ ChatBox.cpp Game.cpp Player.cpp main.cpp -std=c++2a -IResources/Libraries/include -LResources/Libraries -lCandle-s -lsfml-graphics -lsfml-network -lsfml-window -lsfml-system
 test:
 	g++ test.cc -std=c++2a -lsfml-graphics -lsfml-network -lsfml-window -lsfml-system
 server:
