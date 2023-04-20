@@ -1,7 +1,7 @@
 #include "ChatBox.h"
 #include <iostream>
 
-void ChatBox::handle_input(sf::Event e)
+void ChatBox::handle_input(sf::Event e, sf::TcpSocket& socket, unsigned id)
 {
     if(!is_selected) return;
 
@@ -12,10 +12,16 @@ void ChatBox::handle_input(sf::Event e)
     }
     else if(e.text.unicode == Enter && !m_text.empty())
     {
-        buffer.add(m_text);
+        std::string chat_msg = std::string("[PLAYER ") + std::to_string(id) + "] " + m_text;
+        buffer.add(chat_msg);
         m_text = "";
+
+        sf::Packet message;
+        message << PacketType::ChatMessage << chat_msg;
+
+        socket.send(message);
     }
-    else
+    else if(m_text.length() < 53)
     {
         m_text += static_cast<char>(e.text.unicode);
         std::cout << "m_text: " << m_text << std::endl;
@@ -31,10 +37,14 @@ void ChatBox::draw(sf::RenderWindow& window, sf::View& view)
     rectangle2.setSize(sf::Vector2f(1000.f, 10.f));
     rectangle.move(15.f, 15.f);
     rectangle2.move(0.f, 20.f * 43.f);
-    rectangle.setFillColor(sf::Color::Black);
-    rectangle2.setFillColor(sf::Color::Green);
 
-    m_texture.clear(sf::Color::Green);
+    sf::Color Color1 = sf::Color::Black, Color2 = sf::Color::Green;
+    Color1.a = 128;
+    Color2.a = 128;
+    rectangle.setFillColor(Color1);
+    rectangle2.setFillColor(Color2);
+
+    m_texture.clear(Color2);
     m_texture.draw(rectangle);
     m_texture.draw(rectangle2);
 

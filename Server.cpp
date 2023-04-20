@@ -152,6 +152,7 @@ int main()
                         {
                             unsigned packet_header, id;
                             float x, y;
+                            std::string message;
                             packet >> packet_header;
                             PacketType Header = static_cast<PacketType>(packet_header);
 
@@ -161,6 +162,13 @@ int main()
                                     packet >> id >> x >> y;
                                     connected_players[id].position = sf::Vector2f(x,y);
                                     send_packet << PacketType::PlayerPosition << id << x  << y;
+
+                                    for(int j = 0; j < clients.size(); ++j)
+                                        if(i != j) clients[j]->send(send_packet);
+                                    break;
+                                case PacketType::ChatMessage:
+                                    packet >> message;
+                                    send_packet << PacketType::ChatMessage << message;
 
                                     for(int j = 0; j < clients.size(); ++j)
                                         if(i != j) clients[j]->send(send_packet);

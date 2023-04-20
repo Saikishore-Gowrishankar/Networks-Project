@@ -1,9 +1,13 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Network.hpp>
 #include <sstream>
+#include <string>
 #include <memory>
 #include <iostream>
+
 #include "ChatBuffer.h"
+#include "Common.h"
 
 enum Keys
 {
@@ -25,7 +29,7 @@ public:
             std::cout << "Font loaded" << std::endl;
             textbox.setFont(*m_font);
             textbox.setCharacterSize(size);
-            textbox.setFillColor(sf::Color::Green);
+            textbox.setFillColor(sf::Color::White);
 
             logged_text = textbox;
             logged_text.move(20.f, 20.f);
@@ -41,11 +45,12 @@ public:
         }
     }
 
-    void handle_input(sf::Event);
+    void handle_input(sf::Event, sf::TcpSocket&, unsigned);
     void draw(sf::RenderWindow&, sf::View&);
 
     void toggle_selected() { is_selected = !is_selected; }
     bool get_selected() const { return is_selected; }
+    ChatBuffer& get_buffer() { return buffer; }
 
 private:
     ChatBuffer buffer;

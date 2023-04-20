@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <string>
 #include <memory>
 
 #include "Player.h"
@@ -8,6 +9,9 @@
 Player::Player(bool other)
     : m_view(sf::FloatRect(0,0,200,150)), m_other(other)
 {
+    m_font.loadFromFile("Resources/Fonts/arial.ttf");
+    m_name.setFont(m_font);
+    m_name.setCharacterSize(20);
     m_render_view.setRadius(5);
 
     m_flashlight.setRange(50);

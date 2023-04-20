@@ -17,8 +17,7 @@ Game::Game(std::string const& window_name)
     //m_other.setIntensity(0.4);
     m_other.setColor(sf::Color::Red);
     //m_flashlight.setIntensity(0.8);
-    sf::Color c = sf::Color::Black;
-    c.a = 190;
+    sf::Color c(0,3,0,190);
     m_fog.setAreaColor(c);
     font.loadFromFile("Resources/Fonts/LiberationMono-Regular.ttf");
 
@@ -92,7 +91,13 @@ m_other.castLight(m_map_edges.begin(), m_map_edges.end());
         m_flashlight.setPosition(m_player.get_entity().getPosition());
         //m_flashlight.castLight(m_map_edges.begin(), m_map_edges.end());
         m_fog.clear();
-        m_fog.draw(m_player.get_flashlight());
+        if(m_player.flashlight_on()) m_fog.draw(m_player.get_flashlight());
+
+        for(auto&& [key, other_player] : m_other_players)
+        {
+            if(other_player.flashlight_on()) m_fog.draw(other_player.get_flashlight());
+        }
+
         m_fog.display();
         m_window.draw(m_fog);
         m_window.draw(m_other);
@@ -139,13 +144,17 @@ void Game::process_events()
                 {
                     chat.toggle_selected();
                 }
+                else if(event.key.code == sf::Keyboard::F && !chat.get_selected())
+                {
+                    m_player.toggle_flashlight();
+                }
                 break;
             case sf::Event::TextEntered:
             {
                 if(chat.get_selected())
                 {
                     std::cout << "Text entered: " << event.text.unicode << std::endl;
-                    chat.handle_input(event);
+                    chat.handle_input(event, socket, m_player.get_id());
                 }
                 break;
             }
@@ -210,6 +219,13 @@ void Game::update()
         
         m_other_players.erase(id);
         m_connected_ids.erase(id);
+    }
+    else if(static_cast<PacketType>(packet_header) == PacketType::ChatMessage)
+    {
+        std::string message;
+        recv >> message;
+
+        chat.get_buffer().add(message);
     }
     
 
