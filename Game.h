@@ -6,6 +6,7 @@
 #include <set>
 
 #include "Player.h"
+#include "ChatBox.h"
 
 class Game
 {
@@ -22,6 +23,9 @@ public:
     void draw_connected_players();
     void broadcast_player_position();
 private:
+    ChatBox chat;
+    sf::Font font;
+
     std::vector<std::string> m_tilemap;
     std::vector<sf::FloatRect> m_walls;
 

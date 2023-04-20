@@ -1,8 +1,13 @@
 #include <SFML/Network.hpp>
+#include <SFML/Graphics.hpp>
 #include <vector>
+#include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <iostream>
 #include "Common.h"
+#include "Enemy.h"
 
 namespace
 {
@@ -12,10 +17,36 @@ namespace
         sf::Vector2f position;
     };
     std::vector<client_data> connected_players;
+    std::vector<std::string> map;
+    std::vector<sf::Vector2f> empty_spaces;
+    std::vector<Enemy> enemies;
+
+    template<typename T>
+    void broadcast_to_clients(T const& clients, sf::Packet& broadcast)
+    {
+        for(auto&& it : clients)
+        {
+            it->send(broadcast);
+        }
+    }
+
+    void update_enemy_positions()
+    {
+        for(auto&& enemy : enemies)
+            enemy.move(enemy.get_travel_direction());
+    }
+
+    template<typename T>
+    void broadcast_enemy_positions(T const& clients)
+    {
+    }
+
 }
 
 int main()
 {
+    std::srand(time(NULL));
+
     // Create a socket to listen to new connections
     sf::TcpListener listener;
     listener.listen(5000);
@@ -26,14 +57,39 @@ int main()
     sf::SocketSelector selector;
     selector.add(listener);
 
+    std::ifstream map_stream("Resources/Maps/map.txt");
+    std::string row;
+    while(map_stream >> row) map.push_back(row);
+
+    for(int i = 0; i < map.size(); ++i)
+    {
+        for(int j = 0; j < map[0].size(); ++j)
+        {
+            if(map[i][j] != '#')
+            {
+                empty_spaces.push_back(sf::Vector2f(j*20, i*20));
+            }
+        }
+    }
+
+    for(int i = 0; i < 2; ++ i)
+    {
+        unsigned index = rand() % empty_spaces.size();
+        auto&& start_pos = empty_spaces[index];
+        //Enemy e(i, start_pos.x, start_pos.y);
+        
+        enemies.emplace_back(Enemy(i, start_pos.x, start_pos.y));
+
+        empty_spaces.erase(std::cbegin(empty_spaces) + index);
+    }
+
+
     // Endless loop that waits for new connections
     while (true)
     {
-        std::cout << "Waiting on selector\n";
         // Make the selector wait for data on any socket
         if (selector.wait())
         {
-            std::cout << "Is listener ready?\n";
             if (selector.isReady(listener))
             {
                 // The listener is ready: there is a pending connection
@@ -44,12 +100,14 @@ int main()
                     sf::Packet init;
 
                     float x, y;
-                    if (client_ID == 0) x = y = 20.f;
+                    if (client_ID == 0) x = 20.f * 20, y = 2.f * 20;//x = y = 20.f;
                     else x = y = 20.f;
 
-                    connected_players.emplace_back(client_ID, sf::Vector2f(x,y));
+                    auto&& start_pos = /*sf::Vector2f(x,y);*/ empty_spaces[rand() % 10];
 
-                    init << PacketType::PlayerConnected << client_ID++ << x <<  y;
+                    connected_players.emplace_back(client_ID, start_pos/*sf::Vector2f(x,y)*/);
+
+                    init << PacketType::PlayerConnected << client_ID++ << start_pos.x <<  start_pos.y;
 
                     client->setBlocking(false);
 
@@ -64,13 +122,15 @@ int main()
                     broadcast << PacketType::AllPlayers << (sf::Uint32) connected_players.size();
                     for(auto&& it : connected_players) broadcast << it.player_ID << it.position.x << it.position.y;
                    //Broadcast all connection to all clients
+                 /*
                     for (auto&& it : clients)
                     {
                         static int count = 0;
                         std::cout << "Broadcasting to " << count++;
                         it->send(broadcast);
                     }
-
+*/
+                    broadcast_to_clients(clients, broadcast);
                     std::cout << "Broadcasted init packet for client #" << client_ID - 1  << std::endl;
                 }
                 else
@@ -81,7 +141,6 @@ int main()
             }
             else
             {
-                std::cout << "Socket is now testing clients\n";
                 // The listener socket is not ready, test all other sockets (the clients)
                 for (int i = 0; i < clients.size(); ++i)
                 {
@@ -107,11 +166,28 @@ int main()
                                         if(i != j) clients[j]->send(send_packet);
                                     break;
                             }
-
+                        }
+                        else
+                        {
+                            std::cout << "Client disconnected: " << i << std::endl;
+                            selector.remove(*clients[i]);
+                            clients.erase(clients.cbegin() + i);
+                            
+                            sf::Packet broadcast;
+                            broadcast << PacketType::PlayerDisconnected << i;
+                            broadcast_to_clients(clients, broadcast);
                         }
                     }
                 }
             }
         }
+
+        //Other stuff?
+        update_enemy_positions();
+        //broadcast_to_clients(clients, EnemyPositions);
+
+        //sf::Packet p; p << PacketType::EnemyMovement;
+        //broadcast_to_clients(clients, p);
+        //broadcast_enemy_positions(clients);
     }
 }

@@ -1,3 +1,6 @@
+import sys
+sys.setrecursionlimit(10000)
+
 from random import shuffle, randrange
 
 def make_maze(w = 50, h = 36):
