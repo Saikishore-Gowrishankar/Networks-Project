@@ -161,7 +161,7 @@ void Game::process_events()
                 }
                 break;
             }
-            case sf::Event::MouseButtonReleased:
+            case sf::Event::MouseButtonPressed:
             {
                 sf::Vector2i pixel_mouse_pos = sf::Mouse::getPosition(m_window);
                 sf::Vector2f mouse_pos = m_window.mapPixelToCoords(pixel_mouse_pos);
@@ -433,8 +433,8 @@ void Game::check_collision()
                 if(--enemy.m_health == 0)
                 {
                     ExplosionAnimation e;
-                    e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion/PNG/frame";
-                    e.num_frames = 74;
+                    e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/round_vortex/PNG/frame";
+                    e.num_frames = 82;
                     e.pos = m_bullets[i].m_old_pos;
                     m_explosions.push_back(std::move(e));
                     m_enemies.erase(id);
