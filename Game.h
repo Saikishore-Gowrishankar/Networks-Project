@@ -6,10 +6,22 @@
 #include <set>
 
 #include "Player.h"
+#include "Enemy.h"
+#include "Projectile.h"
 #include "ChatBox.h"
 
 #include "Candle/RadialLight.hpp"
 #include "Candle/LightingArea.hpp"
+
+struct ExplosionAnimation
+{
+    sf::Sprite animation;
+    unsigned current_frame_num = 0;
+    sf::Vector2f pos;
+    std::string file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion/PNG/frame";
+    unsigned num_frames;
+    bool done = false;
+};
 
 class Game
 {
@@ -18,14 +30,19 @@ public:
     virtual ~Game() = default;
     
     void run();
+
+private:
     void process_events();
     void draw_map();
     void check_collision();
     void handle_input();
     void update();
     void draw_connected_players();
+    void draw_enemies();
+    void draw_projectiles();
+    void draw_animation();
     void broadcast_player_position();
-private:
+
     ChatBox chat;
     sf::Font font;
 
@@ -42,6 +59,9 @@ private:
     Player m_player;
     sf::Vector2f m_player_oldpos;
     std::map<unsigned,Player> m_other_players;
+    std::map<unsigned,Enemy> m_enemies;
+    std::vector<Projectile> m_bullets;
+    std::vector<ExplosionAnimation> m_explosions;
     std::set<unsigned> m_connected_ids;
 
     sf::TcpSocket socket;

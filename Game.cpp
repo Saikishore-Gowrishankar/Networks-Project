@@ -1,5 +1,8 @@
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <iostream>
+#include <cmath>
 
 #include "Game.h"
 #include "Common.h"
@@ -13,9 +16,9 @@ Game::Game(std::string const& window_name)
     m_flashlight.setRange(50);
     m_flashlight.setFade(false);
 
-    m_other.setRange(150);
+    m_other.setRange(50);
     //m_other.setIntensity(0.4);
-    m_other.setColor(sf::Color::Red);
+    m_other.setColor(sf::Color(237, 158, 12));
     //m_flashlight.setIntensity(0.8);
     sf::Color c(0,3,0,190);
     m_fog.setAreaColor(c);
@@ -25,7 +28,7 @@ Game::Game(std::string const& window_name)
     m_window.setFramerateLimit(60);
     
     //Connect to socket
-    socket.connect(ip, 5000);
+    socket.connect(ip, 5001);
 
     sf::Packet recv;
     socket.receive(recv);
@@ -64,16 +67,10 @@ Game::Game(std::string const& window_name)
 
 void Game::run()
 {
-
-sf::Font font;
-font.loadFromFile("Resources/Fonts/LiberationMono-Regular.ttf");
-// Create a text
-sf::Text text("hello", font);
-text.setCharacterSize(50);
-text.setFillColor(sf::Color::Red);
-
 m_other.setPosition(sf::Vector2f(100.f, 60.f));
 m_other.castLight(m_map_edges.begin(), m_map_edges.end());
+float v = 1.0f;
+int i = 0;
 
     while(m_window.isOpen())
     {
@@ -84,11 +81,13 @@ m_other.castLight(m_map_edges.begin(), m_map_edges.end());
         update();
         broadcast_player_position();
         draw_connected_players();
+        draw_enemies();
+
         //Hande user input
         m_player.draw(m_window);
 
 
-        m_flashlight.setPosition(m_player.get_entity().getPosition());
+        //m_flashlight.setPosition(m_player.get_entity().getPosition());
         //m_flashlight.castLight(m_map_edges.begin(), m_map_edges.end());
         m_fog.clear();
         if(m_player.flashlight_on()) m_fog.draw(m_player.get_flashlight());
@@ -101,6 +100,8 @@ m_other.castLight(m_map_edges.begin(), m_map_edges.end());
         m_fog.display();
         m_window.draw(m_fog);
         m_window.draw(m_other);
+        draw_projectiles();
+        draw_animation();
        // m_window.draw(m_flashlight);
 
         //text.setPosition();
@@ -133,7 +134,6 @@ void Game::process_events()
     sf::Event event;
     while(m_window.pollEvent(event))
     {
-        m_update = !chat.get_selected();
         switch(event.type)
         {
             case sf::Event::Closed: m_window.close(); break;
@@ -147,6 +147,9 @@ void Game::process_events()
                 else if(event.key.code == sf::Keyboard::F && !chat.get_selected())
                 {
                     m_player.toggle_flashlight();
+                    sf::Packet ToggleFlashlight;
+                    ToggleFlashlight << PacketType::FlashlightToggle << m_player.get_id();
+                    socket.send(ToggleFlashlight);
                 }
                 break;
             case sf::Event::TextEntered:
@@ -158,12 +161,35 @@ void Game::process_events()
                 }
                 break;
             }
+            case sf::Event::MouseButtonReleased:
+            {
+                sf::Vector2i pixel_mouse_pos = sf::Mouse::getPosition(m_window);
+                sf::Vector2f mouse_pos = m_window.mapPixelToCoords(pixel_mouse_pos);
+                sf::Vector2f aim_dir = mouse_pos - m_player.get_entity().getPosition();
+                sf::Vector2f aim_dir_norm = aim_dir / sqrtf(pow(aim_dir.x, 2) + pow(aim_dir.y, 2));
+                if(event.mouseButton.button == sf::Mouse::Left)
+                {
+                    Projectile bullet;
+                    bullet.m_bullet.setPosition(m_player.get_entity().getPosition());
+                    bullet.m_current_velocity = aim_dir_norm * 5.f;
+
+                    m_bullets.push_back(std::move(bullet));
+
+                }
+                break;
+            }
         }
     }
 }
 
 void Game::update()
 {
+
+    for(auto&& b : m_bullets)
+    {
+        b.m_old_pos = b.m_bullet.getPosition();
+        b.move(b.m_current_velocity);
+    }
 
     sf::Packet recv;
     int packet_header{};
@@ -173,7 +199,6 @@ void Game::update()
 
     if(static_cast<PacketType>(packet_header) == PacketType::AllPlayers)
     {
-        std::cout << "Updating other players!\n";
         float x, y;
         unsigned id;
         unsigned count;
@@ -227,6 +252,28 @@ void Game::update()
 
         chat.get_buffer().add(message);
     }
+    else if(static_cast<PacketType>(packet_header) == PacketType::FlashlightToggle)
+    {
+        unsigned id;
+        recv >> id;
+        m_other_players[id].toggle_flashlight();
+    }
+    else if(static_cast<PacketType>(packet_header) == PacketType::EnemyPosition)
+    {
+        std::cout << "GETTNG ENEMI" << std::endl;
+        unsigned id, count;
+        float x, y;
+
+        recv >> count;
+
+        for(int i = 0; i < count; ++i)
+        {
+            recv >> id >> x >> y;
+            std::cout << "ID: " << id << "at " << x << " " << y << std::endl;
+            m_enemies[id].set_id(id);
+            m_enemies[id].posx = x; m_enemies[id].posy = y;//m_monster.setPosition(sf::Vector2f(x,y));
+        }
+    }
     
 
 }
@@ -236,6 +283,23 @@ void Game::draw_connected_players()
     for(auto&& [key, elem] : m_other_players)
     {
         elem.draw(m_window);
+    }
+}
+
+void Game::draw_enemies()
+{
+    //std::cout << "Drawing enemies: " << m_enemies.size() << std::endl;
+    for(auto&& [key, elem] : m_enemies)
+    {
+        elem.draw(m_window);
+    }
+}
+
+void Game::draw_projectiles()
+{
+    for(auto&& b : m_bullets)
+    {
+        b.draw(m_window);
     }
 }
 
@@ -252,6 +316,7 @@ void Game::broadcast_player_position()
 
 void Game::handle_input()
 {
+    if(chat.get_selected()) return;
     m_player_oldpos = m_player.get_entity().getPosition();
     if(m_update)
     {
@@ -291,14 +356,91 @@ void Game::draw_map()
     }
 }
 
+void Game::draw_animation()
+{
+    int count = 0;
+    for(int i = 0; i < m_explosions.size(); ++i)
+    {
+        sf::Texture texture;
+        std::ostringstream ss;
+
+        if(m_explosions[i].current_frame_num == m_explosions[i].num_frames)
+        {
+            m_explosions[i].done = true;
+            continue;
+        }
+        ss << std::setfill('0') << std::setw(4) << m_explosions[i].current_frame_num;
+        ss << ".png";
+        std::cout << m_explosions[i].file_path + ss.str() << std::endl;
+        texture.loadFromFile(m_explosions[i].file_path + ss.str());
+
+        m_explosions[i].animation.setTexture(texture);
+        m_explosions[i].animation.setOrigin(m_explosions[i].animation.getGlobalBounds().width/2.f, m_explosions[i].animation.getGlobalBounds().height/2.f);
+        m_explosions[i].animation.setPosition(m_explosions[i].pos);
+        m_window.draw(m_explosions[i].animation);
+
+        m_explosions[i].current_frame_num++;
+            //m_explosions.erase(std::cbegin(m_explosions) + count++);
+    }
+    for(int i = 0; i < m_explosions.size(); ++i) if(m_explosions[i].done) m_explosions.erase(std::cbegin(m_explosions) + i);
+
+}
+
 void Game::check_collision()
 {
-    for(auto&& elem : m_walls)
+    for(auto&& wall : m_walls)
     {
-        if(m_player.get_entity().getGlobalBounds().intersects(elem))
+        if(m_player.get_entity().getGlobalBounds().intersects(wall))
         {
             m_player.get_entity().setPosition(m_player_oldpos);
-            return;
+            break;
+        }
+    }
+    for(auto&& [id, enemy] : m_enemies)
+    {
+        if(m_player.get_entity().getGlobalBounds().intersects(enemy.m_monster.getGlobalBounds()))
+        {
+            m_player.get_entity().setPosition(m_player_oldpos);
+            break;
+        }
+    }
+    for(int i = 0; i < m_bullets.size(); ++i)
+    {
+        for(auto&& wall : m_walls)
+            if(m_bullets[i].m_bullet.getGlobalBounds().intersects(wall))
+            {
+                ExplosionAnimation e;
+                e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/X_plosion/PNG/frame";
+                e.num_frames = 64;
+                e.pos = m_bullets[i].m_old_pos;
+                m_explosions.push_back(std::move(e));
+                m_bullets.erase(std::cbegin(m_bullets) + i);
+                break;
+            }
+    }
+    for(int i = 0; i < m_bullets.size(); ++i)
+    {
+        for(auto&& [id, enemy] : m_enemies)
+        {
+            if(m_bullets[i].m_bullet.getGlobalBounds().intersects(enemy.m_monster.getGlobalBounds()))
+            {
+                ExplosionAnimation e;
+                e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion_small/PNG/frame";
+                e.num_frames = 65;
+                e.pos = m_bullets[i].m_old_pos;
+                m_explosions.push_back(std::move(e));
+                m_bullets.erase(std::cbegin(m_bullets) + i);
+                if(--enemy.m_health == 0)
+                {
+                    ExplosionAnimation e;
+                    e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion/PNG/frame";
+                    e.num_frames = 74;
+                    e.pos = m_bullets[i].m_old_pos;
+                    m_explosions.push_back(std::move(e));
+                    m_enemies.erase(id);
+                }
+                break;
+            }
         }
     }
 }

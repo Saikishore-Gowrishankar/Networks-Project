@@ -8,5 +8,6 @@ enum PacketType
     EnemyPosition,
     PlayerConnected,
     AllPlayers,
-    PlayerDisconnected
+    PlayerDisconnected,
+    FlashlightToggle
 };
