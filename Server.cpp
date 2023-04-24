@@ -10,6 +10,7 @@
 #include <iostream>
 #include "Common.h"
 #include "Enemy.h"
+#include "Projectile.h"
 
 namespace
 {
@@ -227,6 +228,13 @@ int main()
                                 case PacketType::FlashlightToggle:
                                     packet >> id;
                                     send_packet << PacketType::FlashlightToggle << id;
+                                    for(int j = 0; j < clients.size(); ++j) if(i != j) clients[j]->send(send_packet);
+                                    break;
+                                case PacketType::Shot:
+                                    packet >> x >> y;
+                                    send_packet << PacketType::Shot << x << y;
+                                    packet >> x >> y;
+                                    send_packet << x << y;
                                     for(int j = 0; j < clients.size(); ++j) if(i != j) clients[j]->send(send_packet);
 
                             }

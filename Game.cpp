@@ -177,6 +177,11 @@ void Game::process_events()
                     bullet.m_bullet.setPosition(m_player.get_entity().getPosition());
                     bullet.m_current_velocity = aim_dir_norm * 5.f;
 
+                    sf::Packet TransmitShot;
+                    TransmitShot <<  PacketType::Shot << bullet.m_bullet.getPosition().x << bullet.m_bullet.getPosition().y
+                                    << bullet.m_current_velocity.x << bullet.m_current_velocity.y;
+                    socket.send(TransmitShot);
+
                     m_bullets.push_back(std::move(bullet));
 
                 }
@@ -277,6 +282,15 @@ void Game::update()
             m_enemies[id].set_id(id);
             m_enemies[id].posx = x; m_enemies[id].posy = y;//m_monster.setPosition(sf::Vector2f(x,y));
         }
+    }
+    else if(static_cast<PacketType>(packet_header) == PacketType::Shot)
+    {
+        float x, y, vel_x, vel_y;
+        recv >> x >> y >> vel_x >> vel_y;
+        Projectile p;
+        p.m_bullet.setPosition(sf::Vector2f(x,y));
+        p.m_current_velocity = sf::Vector2f(vel_x, vel_y);
+        m_bullets.push_back(std::move(p));
     }
     
 
