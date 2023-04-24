@@ -17,9 +17,9 @@ Game::Game(std::string const& window_name)
     m_flashlight.setFade(false);
 
     m_other.setRange(50);
-    //m_other.setIntensity(0.4);
-    m_other.setColor(sf::Color(237, 158, 12));
-    //m_flashlight.setIntensity(0.8);
+    m_other.setIntensity(0.4);
+    m_other.setColor(sf::Color::Blue);
+
     sf::Color c(0,3,0,190);
     m_fog.setAreaColor(c);
     font.loadFromFile("Resources/Fonts/LiberationMono-Regular.ttf");
@@ -34,13 +34,15 @@ Game::Game(std::string const& window_name)
     socket.receive(recv);
 
     unsigned packet_header{};
-    unsigned id, tileset_number;
+    unsigned id, tileset_number = 9;
     float x{}, y{};
     recv >> packet_header >> id >> x >> y >> tileset_number;
     if(static_cast<PacketType>(packet_header) == PacketType::PlayerConnected)
+    {
         std::cout << "Player joined the game: " << id << std::endl;
-    m_player.set_id(id);
-    m_player.get_entity().setPosition(sf::Vector2f(x,y));
+        m_player.set_id(id);
+        m_player.get_entity().setPosition(sf::Vector2f(x,y));
+    }
 
     socket.setBlocking(false);
 
@@ -71,11 +73,8 @@ Game::Game(std::string const& window_name)
 
 void Game::run()
 {
-m_other.setPosition(sf::Vector2f(100.f, 60.f));
-m_other.castLight(m_map_edges.begin(), m_map_edges.end());
-float v = 1.0f;
-int i = 0;
-
+    m_other.setPosition(sf::Vector2f(100.f, 60.f));
+    m_other.castLight(m_map_edges.begin(), m_map_edges.end());
     while(m_window.isOpen())
     {
         process_events();
@@ -89,10 +88,6 @@ int i = 0;
 
         //Hande user input
         m_player.draw(m_window);
-
-
-        //m_flashlight.setPosition(m_player.get_entity().getPosition());
-        //m_flashlight.castLight(m_map_edges.begin(), m_map_edges.end());
         m_fog.clear();
         if(m_player.flashlight_on()) m_fog.draw(m_player.get_flashlight());
 
@@ -106,26 +101,6 @@ int i = 0;
         m_window.draw(m_other);
         draw_projectiles();
         draw_animation();
-       // m_window.draw(m_flashlight);
-
-        //text.setPosition();
-
-        //text.setPosition(m_player.get_entity().getPosition());
-        //m_window.draw(chat.textbox);
-
-        //m_texture.display();
-/*
-        sf::Sprite sprite(m_texture.getTexture());
-
-        auto&& view = m_player.get_view();
-
-        sprite.setOrigin(sprite.getGlobalBounds().width / 2.f, sprite.getGlobalBounds().height / 2.f);
-        sprite.setPosition(view.getCenter());
-        sprite.setScale(sf::Vector2f(0.1f, 0.1f));
-
-        if(chat.get_selected()) m_window.draw(sprite);
-        //chat.draw(m_window, m_player.get_view());*/
-
         chat.draw(m_window, m_player.get_view());
 
         m_window.display();
@@ -227,13 +202,6 @@ void Game::update()
                 m_connected_ids.insert(id);
             }
         }
-        /*
-        Player p(true);
-        p.set_id(id);
-        p.get_entity().setPosition(sf::Vector2f(x,y));
-
-        m_other_players.push_back(std::move(p));
-        */
     }
     else if(static_cast<PacketType>(packet_header) == PacketType::PlayerPosition)
     {
@@ -269,7 +237,6 @@ void Game::update()
     }
     else if(static_cast<PacketType>(packet_header) == PacketType::EnemyPosition)
     {
-        std::cout << "GETTNG ENEMI" << std::endl;
         unsigned id, count;
         float x, y;
 
@@ -278,9 +245,8 @@ void Game::update()
         for(int i = 0; i < count; ++i)
         {
             recv >> id >> x >> y;
-            std::cout << "ID: " << id << "at " << x << " " << y << std::endl;
             m_enemies[id].set_id(id);
-            m_enemies[id].posx = x; m_enemies[id].posy = y;//m_monster.setPosition(sf::Vector2f(x,y));
+            m_enemies[id].posx = x; m_enemies[id].posy = y;
         }
     }
     else if(static_cast<PacketType>(packet_header) == PacketType::Shot)
@@ -306,7 +272,6 @@ void Game::draw_connected_players()
 
 void Game::draw_enemies()
 {
-    //std::cout << "Drawing enemies: " << m_enemies.size() << std::endl;
     for(auto&& [key, elem] : m_enemies)
     {
         elem.draw(m_window);
@@ -338,23 +303,10 @@ void Game::handle_input()
     m_player_oldpos = m_player.get_entity().getPosition();
     if(m_update)
     {
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-        {
-            m_player.move(Up);
-            //if(shape2.getLocalBounds().intersects())
-        }
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-        {
-            m_player.move(Left);
-        }
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-        {
-            m_player.move(Down);
-        }
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-        {
-            m_player.move(Right);
-        }
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)) m_player.move(Up);
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)) m_player.move(Left);
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)) m_player.move(Down);
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)) m_player.move(Right);
     }
 }
 
@@ -389,7 +341,7 @@ void Game::draw_animation()
         }
         ss << std::setfill('0') << std::setw(4) << m_explosions[i].current_frame_num;
         ss << ".png";
-        std::cout << m_explosions[i].file_path + ss.str() << std::endl;
+
         texture.loadFromFile(m_explosions[i].file_path + ss.str());
 
         m_explosions[i].animation.setTexture(texture);
@@ -398,7 +350,6 @@ void Game::draw_animation()
         m_window.draw(m_explosions[i].animation);
 
         m_explosions[i].current_frame_num++;
-            //m_explosions.erase(std::cbegin(m_explosions) + count++);
     }
     for(int i = 0; i < m_explosions.size(); ++i) if(m_explosions[i].done) m_explosions.erase(std::cbegin(m_explosions) + i);
 
