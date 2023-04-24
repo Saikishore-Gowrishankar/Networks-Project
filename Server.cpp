@@ -129,6 +129,7 @@ int main()
         empty_spaces.erase(std::cbegin(empty_spaces) + index);
     }
 
+    unsigned tileset_number = rand() % 14 + 1;
 
     // Endless loop that waits for new connections
     //sf::Clock clock;
@@ -156,7 +157,7 @@ int main()
 
                     connected_players.emplace_back(client_ID, start_pos/*sf::Vector2f(x,y)*/);
 
-                    init << PacketType::PlayerConnected << client_ID++ << start_pos.x <<  start_pos.y;
+                    init << PacketType::PlayerConnected << client_ID++ << start_pos.x <<  start_pos.y << tileset_number;
 
                     client->setBlocking(false);
 

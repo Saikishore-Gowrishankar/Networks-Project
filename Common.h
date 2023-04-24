@@ -9,5 +9,6 @@ enum PacketType
     PlayerConnected,
     AllPlayers,
     PlayerDisconnected,
-    FlashlightToggle
+    FlashlightToggle,
+    Shot
 };

@@ -34,9 +34,9 @@ Game::Game(std::string const& window_name)
     socket.receive(recv);
 
     unsigned packet_header{};
-    unsigned id;
+    unsigned id, tileset_number;
     float x{}, y{};
-    recv >> packet_header >> id >> x >> y;
+    recv >> packet_header >> id >> x >> y >> tileset_number;
     if(static_cast<PacketType>(packet_header) == PacketType::PlayerConnected)
         std::cout << "Player joined the game: " << id << std::endl;
     m_player.set_id(id);
@@ -45,10 +45,14 @@ Game::Game(std::string const& window_name)
     socket.setBlocking(false);
 
     std::ifstream map_file("Resources/Maps/map.txt");
-    std::string input;
+    std::string input, filename("Resources/Tiles/Tileset_");
+    std::ostringstream ss;
+    ss << tileset_number;
+    filename += ss.str();
+    filename += ".png";
 
-    if(!m_wall_tile.loadFromFile("Tiles_pack/Tileset_14.png", sf::IntRect(0,32,16,16))) std::cout << "Error!" << std::endl;
-    if(!m_empty_tile.loadFromFile("Tiles_pack/Tileset_14.png", sf::IntRect(10*16,4*16,16,16))) std::cout << "Error!" << std::endl;
+    if(!m_wall_tile.loadFromFile(filename, sf::IntRect(0,32,16,16))) std::cout << "Error!" << std::endl;
+    if(!m_empty_tile.loadFromFile(filename, sf::IntRect(10*16,4*16,16,16))) std::cout << "Error!" << std::endl;
 
     while(map_file >> input) m_tilemap.push_back(input);
 

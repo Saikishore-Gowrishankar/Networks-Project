@@ -1,3 +1,4 @@
+#pragma once
 #include <SFML/Graphics.hpp>
 #include "Entity.h"
 
@@ -16,8 +17,5 @@ public:
     virtual void move(Move direction) override{}
     virtual void move(sf::Vector2f pos) { m_bullet.move(pos); }
     virtual void draw(sf::RenderWindow& window) override { window.draw(m_bullet); }
-    void shoot()
-    {
 
-    }
 };
