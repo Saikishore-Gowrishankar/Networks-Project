@@ -42,6 +42,7 @@ private:
     void draw_enemies();
     void draw_projectiles();
     void draw_animation();
+    void draw_player_healthbar();
     void broadcast_player_position();
 
     ChatBox chat;
@@ -64,10 +65,13 @@ private:
     std::vector<Projectile> m_bullets;
     std::vector<ExplosionAnimation> m_explosions;
     std::set<unsigned> m_connected_ids;
+    sf::Texture m_heart_texture;
+    sf::Sprite m_heart;
 
     sf::TcpSocket socket;
     sf::IpAddress ip;
 
     sf::RenderWindow m_window;
-    bool m_update = false;        
+    bool m_update = false;
+
 };

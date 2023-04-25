@@ -13,6 +13,9 @@ Game::Game(std::string const& window_name)
                                                                     sf::Vector2f(0.f, 0.f),
                                                                     sf::Vector2f(3020.f, 1460.f))
 {
+    m_heart_texture.loadFromFile("Resources/Sprites/heart.png");
+    m_heart.setTexture(m_heart_texture);
+
     m_flashlight.setRange(50);
     m_flashlight.setFade(false);
 
@@ -101,10 +104,15 @@ void Game::run()
         m_window.draw(m_other);
         draw_projectiles();
         draw_animation();
+
+        draw_player_healthbar();
+
         chat.draw(m_window, m_player.get_view());
 
         m_window.display();
         m_window.clear();
+
+        if(m_player.is_dead()) return;
     }
 }
 
@@ -286,6 +294,20 @@ void Game::draw_projectiles()
     }
 }
 
+void Game::draw_player_healthbar()
+{
+    sf::Vector2f view_center = m_player.get_view().getCenter();
+    sf::Vector2f half_extents = m_player.get_view().getSize() / 2.0f;
+    sf::Vector2f translation = view_center - half_extents;
+
+    //m_heart.setOrigin(m_heart.getGlobalBounds().width / 2.f, m_heart.getGlobalBounds().height / 2.f);
+    for(int i = 0; i < m_player.get_health(); ++i)
+    {
+        m_heart.setPosition(sf::Vector2f(translation.x + 16.f*i, translation.y));
+        m_window.draw(m_heart);
+    }
+}
+
 void Game::broadcast_player_position()
 {
     if(m_player_oldpos != m_player.get_entity().getPosition())
@@ -370,12 +392,17 @@ void Game::check_collision()
         if(m_player.get_entity().getGlobalBounds().intersects(enemy.m_monster.getGlobalBounds()))
         {
             m_player.get_entity().setPosition(m_player_oldpos);
+            if(!m_player.intersecting) m_player.take_damage();
+            m_player.intersecting = true;
             break;
         }
+        else m_player.intersecting = false;
+
     }
     for(int i = 0; i < m_bullets.size(); ++i)
     {
         for(auto&& wall : m_walls)
+        {
             if(m_bullets[i].m_bullet.getGlobalBounds().intersects(wall))
             {
                 ExplosionAnimation e;
@@ -386,6 +413,7 @@ void Game::check_collision()
                 m_bullets.erase(std::cbegin(m_bullets) + i);
                 break;
             }
+        }
     }
     for(int i = 0; i < m_bullets.size(); ++i)
     {
@@ -396,7 +424,7 @@ void Game::check_collision()
                 ExplosionAnimation e;
                 e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion_small/PNG/frame";
                 e.num_frames = 65;
-                e.pos = m_bullets[i].m_old_pos;
+                e.pos = m_bullets[i].m_bullet.getPosition();//m_old_pos;
                 m_explosions.push_back(std::move(e));
                 m_bullets.erase(std::cbegin(m_bullets) + i);
                 if(--enemy.m_health == 0)

@@ -136,6 +136,8 @@ int main()
     //sf::Clock clock;
     //std::thread t{send_enemy_update};
     //t.detach();
+    
+    std::cout <<  "THIS IS THE IP!"  << sf::IpAddress::getLocalAddress().toString() << std::endl;
     while (true)
     {
         // Make the selector wait for data on any socket

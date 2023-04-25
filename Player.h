@@ -20,6 +20,19 @@ class Player final : public Entity
 
         virtual void move(Move direction) override;
         virtual void draw(sf::RenderWindow&) override;
+
+        void take_damage()
+        {
+            if(m_clock.getElapsedTime().asSeconds() >= 1.f)
+            {
+                m_clock.restart();
+                if(--m_health == 0) m_dead = true;
+            }
+        }
+        int get_health() { return m_health; }
+        bool is_dead() { return m_dead; }
+
+        bool intersecting = false;
     private:
         bool m_other; //Set for the local view of other connected players
         sf::View m_view;
@@ -28,4 +41,8 @@ class Player final : public Entity
         sf::Text m_name;
         sf::Font m_font;
         float player_velocity = 2.0f;
+
+        sf::Clock m_clock;
+        int m_health = 3;
+        bool m_dead = false;
 };
