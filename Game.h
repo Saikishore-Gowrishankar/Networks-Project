@@ -27,7 +27,7 @@ struct ExplosionAnimation
 class Game
 {
 public:
-    Game(std::string const&);
+    Game(std::string const&, std::string const&);
     virtual ~Game() = default;
     
     void run();

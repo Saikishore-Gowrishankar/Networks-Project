@@ -1,14 +1,16 @@
-#include "Game.h"
 #include <SFML/Network.hpp>
 #include <SFML/Graphics.hpp>
-#include <thread>
 #include <iostream>
-#include <mutex>
-#include <vector>
+#include <string>
+#include "Game.h"
 
 int main()
 {
-    Game game("Bozo Project");
+    std::string ip;
+    std::cout << "Enter server IP: ";
+    std::cin >> ip;
+
+    Game game("Bozo Project", ip);
     game.run();
     return 0;
 }

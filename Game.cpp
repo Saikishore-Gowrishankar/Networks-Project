@@ -7,8 +7,8 @@
 #include "Game.h"
 #include "Common.h"
 
-Game::Game(std::string const& window_name)
-    : m_window(sf::VideoMode(3020, 1460/*1280,720*/), window_name.c_str()), m_tile_shape(sf::Vector2f(20,20)), ip(sf::IpAddress::getLocalAddress()),
+Game::Game(std::string const& window_name, std::string const& server_ip)
+    : m_window(sf::VideoMode(3020, 1460/*1280,720*/), window_name.c_str()), m_tile_shape(sf::Vector2f(20,20)), ip(server_ip),//sf::IpAddress::getLocalAddress()),
       chat("Resources/Fonts/LiberationMono-Regular.ttf", 25), m_fog(candle::LightingArea::FOG,
                                                                     sf::Vector2f(0.f, 0.f),
                                                                     sf::Vector2f(3020.f, 1460.f))
