@@ -1,5 +1,4 @@
 #include "Game.h"
-#include "Client.h"
 #include <SFML/Network.hpp>
 #include <SFML/Graphics.hpp>
 #include <thread>
