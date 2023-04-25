@@ -12,6 +12,8 @@
 #include "Enemy.h"
 #include "Projectile.h"
 
+#define thread_safe_cout(s) { cout_lock.lock(); std::cout << s << std::endl; cout_lock.unlock(); }
+
 namespace
 {
     struct client_data
@@ -32,52 +34,35 @@ namespace
     template<typename T>
     void broadcast_to_clients(T const& clients, sf::Packet& broadcast)
     {
-        for(auto&& it : clients)
-        {
-            it->send(broadcast);
-        }
-    }
-
-    void update_enemy_positions()
-    {
-        enemy_lock.lock();
-        for(auto&& enemy : enemies)
-            enemy.move(enemy.get_travel_direction());
-        enemy_lock.unlock();
+        for(auto&& it : clients) it->send(broadcast);
     }
 
     template<typename T>
     void broadcast_enemy_positions(T const& clients)
     {
-        if(true)//clock.getElapsedTime().asMilliseconds() >= 100)
+        if(true)
         {
-           // std::cout << "100ms!\n";
             enemy_lock.lock();
             sf::Packet EnemyPositions;
             EnemyPositions << PacketType::EnemyPosition << (sf::Uint32) enemies.size();
 
-            for(auto&& e : enemies)
-            {
-                EnemyPositions << e.get_id() << e.get_entity().getPosition().x << e.get_entity().getPosition().y;
-            std::cout << "ID: " << e.get_id() << "at " << e.get_entity().getPosition().x << " " << e.get_entity().getPosition().y << std::endl;
-            }
+            for(auto&& e : enemies) EnemyPositions << e.get_id() << e.get_entity().getPosition().x << e.get_entity().getPosition().y;
             enemy_lock.unlock();
 
 
             client_lock.lock();
             broadcast_to_clients(clients, EnemyPositions);
             client_lock.unlock();
-            //clock.restart();
         }
     }
 
-    void send_enemy_update()
+    void accept_debug_input()
     {
+        std::string input;
         while(true)
         {
-            //std::cout << "Sending update!\n";
-            update_enemy_positions();
-            broadcast_enemy_positions(clients);
+            std::cin >> input;
+            thread_safe_cout("Debug: " << input);
         }
     }
 
@@ -123,8 +108,6 @@ int main()
         Enemy e;
         e.set_id(i);
         e.get_entity().setPosition(sf::Vector2f(start_pos.x,start_pos.y));
-
-        std::cout << "Spawning enemy " << e.get_id() << " at: " << e.get_entity().getPosition().x << " " << e.get_entity().getPosition().y;
         enemies.push_back(e);
 
         empty_spaces.erase(std::cbegin(empty_spaces) + index);
@@ -132,12 +115,10 @@ int main()
 
     unsigned tileset_number = rand() % 14 + 1;
 
-    // Endless loop that waits for new connections
-    //sf::Clock clock;
-    //std::thread t{send_enemy_update};
-    //t.detach();
+    std::thread t{accept_debug_input};
+    t.detach();
     
-    std::cout <<  "THIS IS THE IP!"  << sf::IpAddress::getLocalAddress().toString() << std::endl;
+    thread_safe_cout("Server IP: "  << sf::IpAddress::getLocalAddress().toString());
     while (true)
     {
         // Make the selector wait for data on any socket
@@ -149,16 +130,12 @@ int main()
                 auto client = std::make_unique<sf::TcpSocket>();
                 if (listener.accept(*client) == sf::Socket::Done)
                 {
-                    std::cout << "Accepted a new client " << client_ID << std::endl;
+                    thread_safe_cout("Accepted a new client " << client_ID);
                     sf::Packet init;
 
-                    float x, y;
-                    if (client_ID == 0) x = 20.f * 20, y = 2.f * 20;//x = y = 20.f;
-                    else x = y = 20.f;
+                    auto&& start_pos = empty_spaces[rand() % 10];
 
-                    auto&& start_pos = /*sf::Vector2f(x,y);*/ empty_spaces[rand() % 10];
-
-                    connected_players.emplace_back(client_ID, start_pos/*sf::Vector2f(x,y)*/);
+                    connected_players.emplace_back(client_ID, start_pos);
 
                     init << PacketType::PlayerConnected << client_ID++ << start_pos.x <<  start_pos.y << tileset_number;
 
@@ -175,18 +152,11 @@ int main()
                     sf::Packet broadcast;
                     broadcast << PacketType::AllPlayers << (sf::Uint32) connected_players.size();
                     for(auto&& it : connected_players) broadcast << it.player_ID << it.position.x << it.position.y;
-                   //Broadcast all connection to all clients
-                 /*
-                    for (auto&& it : clients)
-                    {
-                        static int count = 0;
-                        std::cout << "Broadcasting to " << count++;
-                        it->send(broadcast);
-                    }
-*/
+
                     broadcast_to_clients(clients, broadcast);
                     client_lock.unlock();
-                    std::cout << "Broadcasted init packet for client #" << client_ID - 1  << std::endl;
+
+                    thread_safe_cout("Broadcasted init packet for client #" << client_ID - 1);
 
                     broadcast_enemy_positions(clients);
 
@@ -243,7 +213,7 @@ int main()
                         }
                         else
                         {
-                            std::cout << "Client disconnected: " << i << std::endl;
+                            thread_safe_cout("Client disconnected: " << i);
                             selector.remove(*clients[i]);
                             clients.erase(clients.cbegin() + i);
                             
@@ -255,12 +225,5 @@ int main()
                 }
             }
         }
-
-        //Other stuff?
-        //std::cout << "Doing other stuffs!!" << counter ++ << std::endl;
-
-        //sf::Packet p; p << PacketType::EnemyMovement;
-        //broadcast_to_clients(clients, p);
-        //broadcast_enemy_positions(clients);
     }
 }

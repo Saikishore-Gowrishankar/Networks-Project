@@ -2,8 +2,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 #include <string>
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Player.h"
@@ -60,11 +60,11 @@ private:
 
     Player m_player;
     sf::Vector2f m_player_oldpos;
-    std::map<unsigned,Player> m_other_players;
-    std::map<unsigned,Enemy> m_enemies;
+    std::unordered_map<unsigned,Player> m_other_players;
+    std::unordered_map<unsigned,Enemy> m_enemies;
     std::vector<Projectile> m_bullets;
     std::vector<ExplosionAnimation> m_explosions;
-    std::set<unsigned> m_connected_ids;
+    std::unordered_set<unsigned> m_connected_ids;
     sf::Texture m_heart_texture;
     sf::Sprite m_heart;
 
