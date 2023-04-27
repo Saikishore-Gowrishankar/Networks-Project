@@ -438,7 +438,7 @@ void Game::check_collision()
                 ExplosionAnimation e;
                 e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion_small/PNG/frame";
                 e.num_frames = 65;
-                e.pos = m_bullets[i].m_bullet.getPosition();
+                e.pos = sf::Vector2f(enemy.posx, enemy.posy);//m_bullets[i].m_bullet.getPosition();
                 m_explosions.push_back(std::move(e));
                 m_bullets.erase(std::cbegin(m_bullets) + i);
                 if(--enemy.m_health == 0)
@@ -446,7 +446,7 @@ void Game::check_collision()
                     ExplosionAnimation e;
                     e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/round_vortex/PNG/frame";
                     e.num_frames = 82;
-                    e.pos = m_bullets[i].m_old_pos;
+                    e.pos = sf::Vector2f(enemy.posx, enemy.posy);//m_bullets[i].m_old_pos;
                     m_explosions.push_back(std::move(e));
                     m_enemies.erase(id);
                 }
