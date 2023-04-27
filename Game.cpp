@@ -13,18 +13,25 @@ Game::Game(std::string const& window_name, std::string const& server_ip)
                                                                     sf::Vector2f(0.f, 0.f),
                                                                     sf::Vector2f(3020.f, 1460.f))
 {
+
+    //Initialize health bar texture
     m_heart_texture.loadFromFile("Resources/Sprites/heart.png");
     m_heart.setTexture(m_heart_texture);
 
+    //Initialize flashlight
     m_flashlight.setRange(50);
     m_flashlight.setFade(false);
 
+    //Initialize other light source
     m_other.setRange(50);
     m_other.setIntensity(0.4);
     m_other.setColor(sf::Color::Blue);
 
+    //Initialize fog of war
     sf::Color c(0,3,0,190);
     m_fog.setAreaColor(c);
+    
+    //Load the font
     font.loadFromFile("Resources/Fonts/LiberationMono-Regular.ttf");
 
     //Limit our window to 60FPS
@@ -33,9 +40,11 @@ Game::Game(std::string const& window_name, std::string const& server_ip)
     //Connect to socket
     socket.connect(ip, 5001);
 
+    //Receive the initialization packet
     sf::Packet recv;
     socket.receive(recv);
 
+    //Initialize player
     unsigned packet_header{};
     unsigned id, tileset_number = 9;
     float x{}, y{};
@@ -47,6 +56,7 @@ Game::Game(std::string const& window_name, std::string const& server_ip)
         m_player.get_entity().setPosition(sf::Vector2f(x,y));
     }
 
+    //All packets received after the initial packet should be received on a nonblocking socket
     socket.setBlocking(false);
 
     std::ifstream map_file("Resources/Maps/map.txt");
@@ -56,11 +66,14 @@ Game::Game(std::string const& window_name, std::string const& server_ip)
     filename += ss.str();
     filename += ".png";
 
+    //Initialize tile textures
     if(!m_wall_tile.loadFromFile(filename, sf::IntRect(0,32,16,16))) std::cout << "Error!" << std::endl;
     if(!m_empty_tile.loadFromFile(filename, sf::IntRect(10*16,4*16,16,16))) std::cout << "Error!" << std::endl;
 
+    //Read the ASCII map
     while(map_file >> input) m_tilemap.push_back(input);
 
+    //Add the wall tiles and calculate edges
     for(int i = 0; i < m_tilemap.size(); ++i)
         for(int j = 0; j < m_tilemap[0].size(); ++j)
             if(m_tilemap[i][j] == '#')
@@ -76,8 +89,10 @@ Game::Game(std::string const& window_name, std::string const& server_ip)
 
 void Game::run()
 {
+    //Raycasting on static light source
     m_other.setPosition(sf::Vector2f(100.f, 60.f));
     m_other.castLight(m_map_edges.begin(), m_map_edges.end());
+    
     while(m_window.isOpen())
     {
         process_events();
@@ -89,7 +104,7 @@ void Game::run()
         draw_connected_players();
         draw_enemies();
 
-        //Hande user input
+
         m_player.draw(m_window);
         m_fog.clear();
         if(m_player.flashlight_on()) m_fog.draw(m_player.get_flashlight());
@@ -189,82 +204,82 @@ void Game::update()
 
     recv >> packet_header;
 
-    if(static_cast<PacketType>(packet_header) == PacketType::AllPlayers)
+    switch(static_cast<PacketType>(packet_header))
     {
-        float x, y;
-        unsigned id;
-        unsigned count;
-
-        recv >> count;
-
-        for(int i = 0; i < count; ++i)
+        case PacketType::AllPlayers:
         {
-            recv >> id >> x >> y;
-            if(id != m_player.get_id() && m_connected_ids.find(id) == m_connected_ids.end())
-            {
-                Player p(true);
-                p.set_id(id);
-                p.get_entity().setPosition(sf::Vector2f(x,y));
-
-                m_other_players.insert({id,std::move(p)});
-                m_connected_ids.insert(id);
+            float x, y;
+            unsigned id;
+            unsigned count;
+            recv >> count;
+            for(int i = 0; i < count; ++i) {
+                recv >> id >> x >> y;
+                if(id != m_player.get_id() && m_connected_ids.find(id) == m_connected_ids.end()) {
+                    Player p(true);
+                    p.set_id(id);
+                    p.get_entity().setPosition(sf::Vector2f(x,y));
+                    m_other_players.insert({id,std::move(p)});
+                    m_connected_ids.insert(id);
+                }
             }
+            break;
         }
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::PlayerPosition)
-    {
-
-        float x, y;
-        unsigned id;
-
-        recv >> id >> x >> y;
-        std::cout << "Received player position update from " << id << "\n";
-        m_other_players[id].get_entity().setPosition(sf::Vector2f(x,y));
-
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::PlayerDisconnected)
-    {
-        unsigned id;
-        recv >> id;
-        
-        m_other_players.erase(id);
-        m_connected_ids.erase(id);
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::ChatMessage)
-    {
-        std::string message;
-        recv >> message;
-
-        chat.get_buffer().add(message);
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::FlashlightToggle)
-    {
-        unsigned id;
-        recv >> id;
-        m_other_players[id].toggle_flashlight();
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::EnemyPosition)
-    {
-        unsigned id, count;
-        float x, y;
-
-        recv >> count;
-
-        for(int i = 0; i < count; ++i)
+        case PacketType::PlayerPosition:
         {
+            float x, y;
+            unsigned id;
             recv >> id >> x >> y;
-            m_enemies[id].set_id(id);
-            m_enemies[id].posx = x; m_enemies[id].posy = y;
+            std::cout << "Received player position update from " << id << "\n";
+            m_other_players[id].get_entity().setPosition(sf::Vector2f(x,y));
+            break;
         }
-    }
-    else if(static_cast<PacketType>(packet_header) == PacketType::Shot)
-    {
-        float x, y, vel_x, vel_y;
-        recv >> x >> y >> vel_x >> vel_y;
-        Projectile p;
-        p.m_bullet.setPosition(sf::Vector2f(x,y));
-        p.m_current_velocity = sf::Vector2f(vel_x, vel_y);
-        m_bullets.push_back(std::move(p));
+        case PacketType::PlayerDisconnected:
+        {
+            unsigned id;
+            recv >> id;
+            m_other_players.erase(id);
+            m_connected_ids.erase(id);
+            break;
+        }
+        case PacketType::ChatMessage:
+        {
+            std::string message;
+            recv >> message;
+            chat.get_buffer().add(message);
+            break;
+        }
+        case PacketType::FlashlightToggle:
+        {
+            unsigned id;
+            recv >> id;
+            m_other_players[id].toggle_flashlight();
+            break;
+        }
+        case PacketType::EnemyPosition:
+        {
+            unsigned id, count;
+            float x, y;
+            recv >> count;
+            for(int i = 0; i < count; ++i) {
+                recv >> id >> x >> y;
+                m_enemies[id].set_id(id);
+                m_enemies[id].posx = x; m_enemies[id].posy = y;
+            }
+            break;
+        }
+        case PacketType::Shot:
+        {
+            float x, y, vel_x, vel_y;
+            recv >> x >> y >> vel_x >> vel_y;
+            Projectile p;
+            p.m_bullet.setPosition(sf::Vector2f(x,y));
+            p.m_current_velocity = sf::Vector2f(vel_x, vel_y);
+            m_bullets.push_back(std::move(p));
+            break;
+        }
+        default:
+            // Handle unknown packet type
+            break;
     }
     
 
@@ -300,7 +315,6 @@ void Game::draw_player_healthbar()
     sf::Vector2f half_extents = m_player.get_view().getSize() / 2.0f;
     sf::Vector2f translation = view_center - half_extents;
 
-    //m_heart.setOrigin(m_heart.getGlobalBounds().width / 2.f, m_heart.getGlobalBounds().height / 2.f);
     for(int i = 0; i < m_player.get_health(); ++i)
     {
         m_heart.setPosition(sf::Vector2f(translation.x + 16.f*i, translation.y));
@@ -424,7 +438,7 @@ void Game::check_collision()
                 ExplosionAnimation e;
                 e.file_path = "Resources/Sprites/wills_pixel_explosions_sample/vertical_explosion_small/PNG/frame";
                 e.num_frames = 65;
-                e.pos = m_bullets[i].m_bullet.getPosition();//m_old_pos;
+                e.pos = m_bullets[i].m_bullet.getPosition();
                 m_explosions.push_back(std::move(e));
                 m_bullets.erase(std::cbegin(m_bullets) + i);
                 if(--enemy.m_health == 0)
